@@ -1,14 +1,16 @@
 #pragma once
 
-namespace Chip8Emu
+namespace chip8emu
 {
 	// Typedefs
 	typedef unsigned char   u8;
 	typedef unsigned short u16;
 
 
+
 	// Constants
 	const u16 programStart = 0x200;
+
 
 
 	// Helper Functions
@@ -17,6 +19,7 @@ namespace Chip8Emu
 	{
 		return static_cast<bool>( static_cast<u8>( src >> offset ) & 1 );
 	}
+
 
 
 	// The CPU Structure
@@ -37,5 +40,17 @@ namespace Chip8Emu
 		u16 stack[16];       // Stack
 		u8  ram[0x1000];     // System RAM
 
+
+		// Constructor
+		CPU();
+
+		// Methods
+		void StepCycle();
+
+
+	  private:
+		u16 ReadInstruction( u16 addr );
+		void ExecInstruction( u16 instr );
 	};
 };
+

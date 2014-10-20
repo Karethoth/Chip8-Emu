@@ -64,6 +64,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\chip8.cc" />
     <ClCompile Include="src\main.cc" />
   </ItemGroup>
   <ItemGroup>
