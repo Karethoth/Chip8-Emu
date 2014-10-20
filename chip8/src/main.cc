@@ -7,13 +7,20 @@ using namespace chip8emu;
 
 int main()
 {
-	CPU chip8;
-
-	chip8.LoadProgram( "test.ch8" );
-
-	while( chip8.ram[chip8.PC] )
+	try
 	{
-		chip8.StepCycle();
+		CPU chip8;
+
+		chip8.LoadProgram( "test.ch8" );
+
+		while( true )
+		{
+			chip8.StepCycle();
+		}
+	}
+	catch( string &e )
+	{
+		cout << "Ran to error '" << e << "', exiting.." << endl;
 	}
 
 	cout << endl << "Hit enter to quit." << endl;

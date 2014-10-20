@@ -55,6 +55,7 @@ u16 CPU::ReadInstruction( u16 addr ) const
 	if( addr > 0xFFF )
 	{
 		cout << "Trying to access memory location " << hex << addr << "! Ignoring.." << endl;
+		throw string( "Bad read" );
 		return 0;
 	}
 
@@ -64,15 +65,58 @@ u16 CPU::ReadInstruction( u16 addr ) const
 
 void CPU::ExecInstruction( u16 instr )
 {
+	cout << "Executing " << hex << static_cast<int>( instr ) << endl;
 	if( !instr )
 	{
+		throw string( "Null Instruction!" );
+	}
+
+	// 1nnn - JP addr
+	else if( Match( instr, JP ) && GetNibble( instr, 12 ) == 1 )
+	{
+		PC = static_cast<u16>( instr & 0x0FFF );
+		cout << "Jumping to " << hex << static_cast<int>( PC ) << endl;
+		return;
+	}
+
+	// 3xkk - SE Vx, byte
+	else if( Match( instr, SE ) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		auto kk = static_cast<u8>( instr & 0x00FF );
+		if( x == kk )
+		{
+			PC += 2;
+		}
 	}
 
 	// 6xkk - LD Vx, byte
 	else if( Match( instr, STRG ) )
 	{
-		auto x = GetNibble<u16>( instr, 8 );
+		auto x = GetNibble<>( instr, 8 );
 		V[x] = static_cast<u8>( instr & 0x00FF );
+	}
+
+	// 8xy0 - LD Vx, Vy
+	else if( Match( instr, STRG2 ) && ((instr & 0x000F) == 0) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		auto y = GetNibble<>( instr, 4 );
+		V[x] = V[y];
+	}
+
+	// 8xy5 - SUB Vx, Vy
+	else if( Match( instr, SUB ) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		auto y = GetNibble<>( instr, 4 );
+
+		if( V[x] > V[y] )
+			V[0xf] = 1;
+		else
+			V[0xf] = 0;
+
+		V[x] -= V[y];
 	}
 
 	// Annn - LD I, addr
@@ -84,15 +128,25 @@ void CPU::ExecInstruction( u16 instr )
 	// Cxkk - RND Vx, byte
 	else if( Match( instr, RND ) )
 	{
-		auto x = GetNibble<u16>( instr, 8 );
-		auto r = static_cast<u8>( dis( gen ) & instr & 0x00FF );
-		V[x] = r;
+		auto x  = GetNibble<>( instr, 8 );
+		auto kk = static_cast<u8>( dis( gen ) & instr & 0x00FF );
+		V[x] = kk;
+	}
+
+	// 0nnn - SYS addr
+	else if( !(instr & 0xF000) && instr )
+	{
+		PC = static_cast<u16>( instr & 0x0FFF );
+		cout << "Calling to " << hex << static_cast<int>( PC ) << endl;
+		return;
 	}
 
 	else
 	{
-		cout << "Trying to exec instruction " << hex << instr << " @ " << PC
+		cout << "Trying to exec instruction " << hex << static_cast<int>( instr ) << " @ " << PC
 			 << " failed, it's not implemented!" << endl;
+
+		getc( stdin );
 	}
 
 
