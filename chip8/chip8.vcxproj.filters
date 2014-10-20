@@ -26,5 +26,8 @@
     <ClInclude Include="src\chip8.hh">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\chip8_instructions.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

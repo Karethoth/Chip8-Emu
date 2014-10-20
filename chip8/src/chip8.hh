@@ -1,5 +1,9 @@
 #pragma once
 
+#include "chip8_instructions.hh"
+#include <string>
+
+
 namespace chip8emu
 {
 	// Typedefs
@@ -20,14 +24,19 @@ namespace chip8emu
 		return static_cast<bool>( static_cast<u8>( src >> offset ) & 1 );
 	}
 
+	template <typename T>
+	u8 GetNibble( T src, u8 offset )
+	{
+		return static_cast<u8>( src >> offset ) & 0xF;
+	}
+
 
 
 	// The CPU Structure
 	struct CPU
 	{
 		// General Purpose Registers
-		u8 V0, V1, V2, V3, V4, V5, V6, V7,
-		   V8, V9, VA, VB, VC, VD, VE, VF;
+		u8 V[16];
 
 		// Special registers
 		u16 I;               // Address Register
@@ -45,12 +54,14 @@ namespace chip8emu
 		CPU();
 
 		// Methods
+		void LoadProgram( const std::string &path );
 		void StepCycle();
 
 
 	  private:
-		u16 ReadInstruction( u16 addr );
+		u16 ReadInstruction( u16 addr ) const;
 		void ExecInstruction( u16 instr );
+		bool Match( u16 instr, Chip8Instruction pattern );
 	};
 };
 

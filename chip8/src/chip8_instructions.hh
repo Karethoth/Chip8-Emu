@@ -2,7 +2,7 @@
 
 namespace chip8emu
 {
-	enum Chip8Instruction : unsigned char
+	enum Chip8Instruction : unsigned short
 	{
 		SYS = 0x0000,
 		CLS = 0x00E0,
