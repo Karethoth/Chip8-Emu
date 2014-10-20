@@ -56,12 +56,13 @@ namespace chip8emu
 		// Methods
 		void LoadProgram( const std::string &path );
 		void StepCycle();
+		void PrintInfo();
 
 
 	  private:
 		u16 ReadInstruction( u16 addr ) const;
 		void ExecInstruction( u16 instr );
-		bool Match( u16 instr, Chip8Instruction pattern );
+		bool Match( u16 instr, Chip8Instruction pattern, u16 mask );
 	};
 };
 

@@ -1,5 +1,6 @@
 #include "chip8.hh"
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <random>
 
@@ -71,16 +72,40 @@ void CPU::ExecInstruction( u16 instr )
 		throw string( "Null Instruction!" );
 	}
 
+	// 0nnn - SYS addr
+	else if( !(instr & 0xF000) && instr )
+	{
+		PC = static_cast<u16>( instr & 0x0FFF );
+		cout << "Calling to " << hex << static_cast<int>( PC ) << endl;
+		return;
+	}
+
 	// 1nnn - JP addr
-	else if( Match( instr, JP ) && GetNibble( instr, 12 ) == 1 )
+	else if( Match( instr, JP, 0xF000 ) )
 	{
 		PC = static_cast<u16>( instr & 0x0FFF );
 		cout << "Jumping to " << hex << static_cast<int>( PC ) << endl;
 		return;
 	}
 
+	// 2nnn - CALL addr
+	else if( Match( instr, CALL, 0xF000 ) )
+	{
+		if( SP > 0xF )
+		{
+			throw string( "Stack overflow!" );
+		}
+
+		SP++;
+		stack[SP] = PC+2;
+
+		PC = static_cast<u16>( instr & 0x0FFF );
+		cout << "Calling " << hex << static_cast<int>( PC ) << endl;
+		return;
+	}
+
 	// 3xkk - SE Vx, byte
-	else if( Match( instr, SE ) )
+	else if( Match( instr, SE, 0xF000 ) )
 	{
 		auto x = GetNibble<>( instr, 8 );
 		auto kk = static_cast<u8>( instr & 0x00FF );
@@ -90,55 +115,70 @@ void CPU::ExecInstruction( u16 instr )
 		}
 	}
 
+	// 5xy0 - SE Vx, Vy
+	else if( Match( instr, SE2, 0xF00F ) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		auto y = GetNibble<>( instr, 4 );
+		if( x == y )
+		{
+			PC += 2;
+		}
+	}
+
 	// 6xkk - LD Vx, byte
-	else if( Match( instr, STRG ) )
+	else if( Match( instr, STRG, 0xF000 ) )
 	{
 		auto x = GetNibble<>( instr, 8 );
 		V[x] = static_cast<u8>( instr & 0x00FF );
 	}
 
 	// 8xy0 - LD Vx, Vy
-	else if( Match( instr, STRG2 ) && ((instr & 0x000F) == 0) )
+	else if( Match( instr, STRG2, 0xF00F) )
 	{
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
 		V[x] = V[y];
 	}
 
+	// 8xy4 - ADD Vx, Vy
+	else if( Match( instr, ADD2, 0xF00F ) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		auto y = GetNibble<>( instr, 4 );
+
+		u16 sum = x + y;
+		V[0xF] = sum > 0xFF;
+
+		V[x] = sum;
+	}
+
 	// 8xy5 - SUB Vx, Vy
-	else if( Match( instr, SUB ) )
+	else if( Match( instr, SUB, 0xF00F ) )
 	{
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
 
 		if( V[x] > V[y] )
-			V[0xf] = 1;
+			V[0xF] = 1;
 		else
-			V[0xf] = 0;
+			V[0xF] = 0;
 
 		V[x] -= V[y];
 	}
 
 	// Annn - LD I, addr
-	else if( Match( instr, LDI ) )
+	else if( Match( instr, LDI, 0xF000 ) )
 	{
 		I = static_cast<u16>( instr & 0x0FFF );
 	}
 
 	// Cxkk - RND Vx, byte
-	else if( Match( instr, RND ) )
+	else if( Match( instr, RND, 0xF000 ) )
 	{
 		auto x  = GetNibble<>( instr, 8 );
 		auto kk = static_cast<u8>( dis( gen ) & instr & 0x00FF );
 		V[x] = kk;
-	}
-
-	// 0nnn - SYS addr
-	else if( !(instr & 0xF000) && instr )
-	{
-		PC = static_cast<u16>( instr & 0x0FFF );
-		cout << "Calling to " << hex << static_cast<int>( PC ) << endl;
-		return;
 	}
 
 	else
@@ -155,18 +195,38 @@ void CPU::ExecInstruction( u16 instr )
 }
 
 
-bool CPU::Match( u16 instr, Chip8Instruction pattern )
+void CPU::PrintInfo()
 {
-	u8 patternHigh = static_cast<u8>( (pattern & 0xFF00) >> 8 );
-	u8 patternLow  = static_cast<u8>( pattern & 0x00FF );
-	u8 instrHigh = static_cast<u8>( (instr & 0xFF00) >> 8 );
-	u8 instrLow  = static_cast<u8>( instr & 0x00FF );
+	cout << endl << "General purpose registers:" << endl;
 
-	if( ((instrHigh & patternHigh) == patternHigh) &&
-	    ((instrLow & patternLow)   == patternLow) )
+	for( int i=0; i <= 0xF; i++ )
+	{
+		cout << "V" << hex << i << ":" << setfill('0') << setw(2) << static_cast<int>( V[i] ) << ", ";
+		if( !((i+1)%8) )
+		{
+			cout << endl;
+		}
+	}
+	cout << endl;
+
+	cout << " I:" << setfill( '0' )  << setw( 4 ) << static_cast<int>( I ) << ", "
+	     << "PC:" << setfill( '0' )  << setw( 4 ) << static_cast<int>( PC ) << ", "
+	     << "SP:" << setfill( '0' )  << setw( 2 ) << static_cast<int>( SP ) << ", "
+	     << "Ti:" << setfill( '0' )  << setw( 2 ) << static_cast<int>( Time ) << ", "
+	     << "To:" << setfill( '0' )  << setw( 2 ) << static_cast<int>( Tone ) << ", "
+	     << "Key:" << setfill( '0' ) << setw( 4 ) << static_cast<int>( Key ) << endl;
+
+	cout << endl;
+}
+
+
+bool CPU::Match( u16 instr, Chip8Instruction pattern, u16 mask )
+{
+	if( (instr & mask) == (pattern & mask) )
 	{
 		return true;
 	}
+
 	return false;
 }
 

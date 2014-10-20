@@ -15,9 +15,12 @@ int main()
 
 		while( true )
 		{
+			//chip8.PrintInfo();
+			//getc( stdin );
 			chip8.StepCycle();
 		}
 	}
+
 	catch( string &e )
 	{
 		cout << "Ran to error '" << e << "', exiting.." << endl;
