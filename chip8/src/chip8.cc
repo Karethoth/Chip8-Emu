@@ -405,7 +405,8 @@ void CPU::Draw( u8 x, u8 y, u8 n )
 
 	for( u8 i=0; i < n; i++ )
 	{
-		//vram[posY*displayWidth/8 + i*displayWidth/8 + posX/8] ^= ram[I+i];
+		u32 mark = ram[I+i];
+		vram[posY*displayWidth + i*displayWidth + posX] ^= mark;
 		cout << "Drew: " << static_cast<int>( posX/8 ) << "," << static_cast<int>( posY/8+i ) << ": " << hex << static_cast<int>( ram[I+i] ) << endl;
 	}
 }

@@ -9,6 +9,7 @@ namespace chip8emu
 	// Typedefs
 	typedef unsigned char   u8;
 	typedef unsigned short u16;
+	typedef unsigned int   u32;
 
 
 
@@ -47,7 +48,9 @@ namespace chip8emu
 		// Memory
 		u16 stack[16];       // Stack
 		u8  ram[0x1000];     // System RAM
-		u8  vram[(displayHeight/8)*(displayWidth/8)]; // Video RAM
+
+		// Video RAM
+		u32  vram[displayHeight * displayWidth]; 
 
 		// Constructor
 		CPU();
