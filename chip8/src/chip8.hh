@@ -56,6 +56,7 @@ namespace chip8emu
 		void LoadProgram( const std::string &path );
 		void StepCycle();
 		void PrintInfo();
+		void PrintStack();
 
 
 	  private:

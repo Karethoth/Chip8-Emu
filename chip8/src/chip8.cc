@@ -67,7 +67,8 @@ u16 CPU::ReadInstruction( u16 addr ) const
 
 void CPU::ExecInstruction( u16 instr )
 {
-	//cout << "Executing " << hex << static_cast<int>( instr ) << endl;
+	cout << "Executing " << setw( 4 ) << setfill( '0' ) << hex
+	     << static_cast<int>( instr ) << " @ " << static_cast<int>( PC ) << endl;
 	if( !instr )
 	{
 		// Null instruction is handled as a NOP
@@ -76,10 +77,10 @@ void CPU::ExecInstruction( u16 instr )
 	// 00E0 - CLS
 	else if( Match( instr, CLS, 0xFFFF ) )
 	{
-
+		cout << "Clearing screen" << endl;
 	}
 
-	// 00E0 - RET
+	// 00EE - RET
 	else if( Match( instr, RET, 0xFFFF ) )
 	{
 		if( SP > 0xF )
@@ -88,7 +89,6 @@ void CPU::ExecInstruction( u16 instr )
 		}
 
 		PC = stack[SP];
-		//cout << "Returned to " << hex << static_cast<int>( PC ) << endl;
 		SP--;
 	}
 
@@ -96,6 +96,7 @@ void CPU::ExecInstruction( u16 instr )
 	else if( !(instr & 0xF000) && instr )
 	{
 		// Ignored, handled as NOP
+		cout << "Ignored " << hex << static_cast<int>( instr ) << endl;
 	}
 
 	// 1nnn - JP addr
@@ -114,7 +115,7 @@ void CPU::ExecInstruction( u16 instr )
 		}
 
 		SP++;
-		stack[SP] = PC+2;
+		stack[SP] = PC;
 
 		PC = static_cast<u16>( instr & 0x0FFF );
 		//cout << "Calling " << hex << static_cast<int>( PC ) << endl;
@@ -126,7 +127,7 @@ void CPU::ExecInstruction( u16 instr )
 	{
 		auto x = GetNibble<>( instr, 8 );
 		auto kk = static_cast<u8>( instr & 0x00FF );
-		if( x == kk )
+		if( V[x] == kk )
 		{
 			PC += 2;
 		}
@@ -137,7 +138,7 @@ void CPU::ExecInstruction( u16 instr )
 	{
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
-		if( x == y )
+		if( V[x] == V[y] )
 		{
 			PC += 2;
 		}
@@ -214,7 +215,7 @@ void CPU::ExecInstruction( u16 instr )
 		auto y = GetNibble<>( instr, 4 );
 		V[0xF] = V[x] >> 7;
 
-		V[x] = V[x] << 1;
+		V[x] *= 2;
 	}
 
 	// 9xy0 - SNE Vx, Vy
@@ -241,6 +242,7 @@ void CPU::ExecInstruction( u16 instr )
 		auto x  = GetNibble<>( instr, 8 );
 		auto kk = static_cast<u8>( dis( gen ) & instr & 0x00FF );
 		V[x] = kk;
+		cout << "RND: " << static_cast<int>( kk ) << endl;
 	}
 
 	// Dxyn - DRW Vx, Vy, nibble
@@ -251,6 +253,29 @@ void CPU::ExecInstruction( u16 instr )
 		auto n = GetNibble<>( instr, 0 );
 
 		Draw( x, y, n );
+	}
+
+	// Fx07 - LD Vx, DT
+	else if( Match( instr, LDDT, 0xF0FF ) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		V[x] = Time;
+	}
+
+	// Fx15 - LD DT, Vx
+	else if( Match( instr, STDT, 0xF0FF ) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		Time = V[x];
+		cout << "Delay Timer set" << endl;
+	}
+
+	// Fx18 - LD ST, Vx
+	else if( Match( instr, STST, 0xF0FF ) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		Tone = V[x];
+		cout << "Tone Timer set" << endl;
 	}
 
 	// Fx1E - ADD I, Vx
@@ -278,9 +303,12 @@ void CPU::ExecInstruction( u16 instr )
 		u16 offset = 0;
 		auto x = GetNibble<>( instr, 8 );
 
+
 		for( u8 i=0; i <= x; i++ )
 		{
-			V[i] = ram[I+offset++];
+			//cout << "MEMREAD FROM " << hex << static_cast<int>( I+offset ) << endl;
+			V[i] = ram[I+offset];
+			offset++;
 		}
 	}
 
@@ -320,6 +348,18 @@ void CPU::PrintInfo()
 	     << "Key:" << setfill( '0' ) << setw( 4 ) << static_cast<int>( Key ) << endl;
 
 	cout << endl;
+}
+
+
+void CPU::PrintStack()
+{
+	cout << endl << "Stack:" << endl;
+
+	for( int i=0; i <= SP; i++ )
+	{
+		cout << "\t" << hex << i << ":" << setfill('0') << setw(4) << static_cast<int>( stack[i] ) << endl;
+	}
+	cout << endl << endl;
 }
 
 

@@ -16,6 +16,7 @@ int main()
 		while( true )
 		{
 			//chip8.PrintInfo();
+			//chip8.PrintStack();
 			//getc( stdin );
 			chip8.StepCycle();
 		}
