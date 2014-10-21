@@ -13,8 +13,9 @@ namespace chip8emu
 
 
 	// Constants
-	const u16 programStart = 0x200;
-
+	const u16 programStart  = 0x200;
+	const u8  displayWidth  = 128;
+	const u8  displayHeight = 64;
 
 
 	// Helper Functions
@@ -29,8 +30,6 @@ namespace chip8emu
 	{
 		return static_cast<u8>( src >> offset ) & 0xF;
 	}
-
-
 
 	// The CPU Structure
 	struct CPU
@@ -48,7 +47,7 @@ namespace chip8emu
 		// Memory
 		u16 stack[16];       // Stack
 		u8  ram[0x1000];     // System RAM
-
+		u8  vram[(displayHeight/8)*(displayWidth/8)]; // Video RAM
 
 		// Constructor
 		CPU();
@@ -63,6 +62,7 @@ namespace chip8emu
 		u16 ReadInstruction( u16 addr ) const;
 		void ExecInstruction( u16 instr );
 		bool Match( u16 instr, Chip8Instruction pattern, u16 mask );
+		void Draw( u8 x, u8 y, u8 n );
 	};
 };
 
