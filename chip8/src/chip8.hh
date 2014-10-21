@@ -34,7 +34,6 @@ namespace chip8emu
 		return static_cast<u8>( src >> offset ) & 0xF;
 	}
 
-
 	// The CPU Structure
 	struct CPU
 	{

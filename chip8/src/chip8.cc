@@ -7,6 +7,8 @@
 using namespace std;
 using namespace chip8emu;
 
+//#define DEBUG_MODE
+
 
 random_device rd;
 static mt19937 gen( rd() );
@@ -68,7 +70,7 @@ u16 CPU::ReadInstruction( u16 addr ) const
 
 static void DebugPrint( const string &msg )
 {
-	#if DEBUG_MODE
+	#ifdef DEBUG_MODE
 		cout << msg << endl;
 	#endif
 }
@@ -76,7 +78,7 @@ static void DebugPrint( const string &msg )
 
 void CPU::ExecInstruction( u16 instr )
 {
-	#if DEBUG_MODE
+	#ifdef DEBUG_MODE
 		cout << "Executing " << setw( 4 ) << setfill( '0' ) << hex
 			 << static_cast<int>( instr ) << " @ " << static_cast<int>( PC ) << " : ";
 	#endif
@@ -418,30 +420,10 @@ void CPU::PrintStack()
 }
 
 
-void timerLoop( CPU *cpu )
-{
-	while( cpu && !cpu->killTimer )
-	{
-		if( cpu->Time > 0 )
-		{
-			cpu->Time--;
-			cout << cpu->Tone << endl;
-		}
-
-		if( cpu->Tone > 0 )
-		{
-			cpu->Tone--;
-			cout << cpu->Tone << endl;
-		}
-
-		this_thread::sleep_for( chrono::milliseconds( 16 ) );
-	}
-}
-
-
+void _TimerLoop( CPU *cpu );
 void CPU::StartTimerThread()
 {
-	timerThread = thread( timerLoop, this );
+	timerThread = thread( _TimerLoop, this );
 }
 
 
@@ -488,6 +470,25 @@ void CPU::Draw( u8 x, u8 y, u8 n )
 			auto on = GetBit( spriteLine, 7-_x );
 			vram[pos + _x] ^= on ? 0xffff : 0x0000;
 		}
+	}
+}
+
+
+void _TimerLoop( CPU *cpu )
+{
+	while( cpu && !cpu->killTimer )
+	{
+		if( cpu->Time > 0 )
+		{
+			cpu->Time--;
+		}
+
+		if( cpu->Tone > 0 )
+		{
+			cpu->Tone--;
+		}
+
+		this_thread::sleep_for( chrono::milliseconds( 16 ) );
 	}
 }
 

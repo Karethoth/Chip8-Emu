@@ -1,5 +1,3 @@
-#define DEBUG_MODE true
-
 #include "chip8.hh"
 #include <iostream>
 #include <SDL2/SDL.h>
