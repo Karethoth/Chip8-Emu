@@ -2,6 +2,8 @@
 
 #include "chip8_instructions.hh"
 #include <string>
+#include <thread>
+#include <atomic>
 
 
 namespace chip8emu
@@ -15,8 +17,8 @@ namespace chip8emu
 
 	// Constants
 	const u16 programStart  = 0x200;
-	const u8  displayWidth  = 128;
-	const u8  displayHeight = 64;
+	const u8  displayWidth  = 64;
+	const u8  displayHeight = 32;
 
 
 	// Helper Functions
@@ -32,22 +34,25 @@ namespace chip8emu
 		return static_cast<u8>( src >> offset ) & 0xF;
 	}
 
+
 	// The CPU Structure
 	struct CPU
 	{
 		// General Purpose Registers
 		u8 V[16];
 
-		// Special registers
-		u16 I;               // Address Register
-		u8  Time, Tone;      // Time and Tone Registers
-		u16 PC;              // Program Counter
-		u8  SP;              // Stack Pointer
-		u16 Key;             // Key Register (for input)
+		// Special Registers
+		u16 I;                       // Address Register
+		u16 PC;                      // Program Counter
+		u8  SP;                      // Stack Pointer
+
+		// Atomic Special Registers
+		std::atomic<u16> Key;        // Key Register (for input)
+		std::atomic<u8>  Time, Tone; // Time and Tone Registers
 
 		// Memory
-		u16 stack[16];       // Stack
-		u8  ram[0x1000];     // System RAM
+		u16 stack[16];               // Stack
+		u8  ram[0x1000];             // System RAM
 
 		// Video RAM
 		u32  vram[displayHeight * displayWidth]; 
@@ -63,7 +68,7 @@ namespace chip8emu
 
 
 	  private:
-		u16 ReadInstruction( u16 addr ) const;
+		u16  ReadInstruction( u16 addr ) const;
 		void ExecInstruction( u16 instr );
 		bool Match( u16 instr, Chip8Instruction pattern, u16 mask );
 		void Draw( u8 x, u8 y, u8 n );

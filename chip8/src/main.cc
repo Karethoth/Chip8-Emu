@@ -23,8 +23,8 @@ int main( int argc, char **argv )
 		"Chip-8 Emulator",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
-		displayWidth * 4,
-		displayHeight * 4,
+		displayWidth * 8,
+		displayHeight * 8,
 		0
     );
 
@@ -79,3 +79,4 @@ void HandleInput()
 	{
 	}
 }
+
