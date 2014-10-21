@@ -92,6 +92,7 @@ void CPU::ExecInstruction( u16 instr )
 	else if( Match( instr, CLS, 0xFFFF ) )
 	{
 		DebugPrint( "00E0 - Clear screen" );
+		memset( vram, 0, displayHeight * displayWidth * sizeof( u32 ) );
 	}
 
 	// 00EE - RET
