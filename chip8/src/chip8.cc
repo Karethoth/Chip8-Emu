@@ -391,7 +391,7 @@ void CPU::ExecInstruction( u16 instr )
 }
 
 
-void CPU::PrintInfo()
+void CPU::PrintInfo() const
 {
 	cout << endl << "General purpose registers:" << endl;
 
@@ -416,7 +416,7 @@ void CPU::PrintInfo()
 }
 
 
-void CPU::PrintStack()
+void CPU::PrintStack() const
 {
 	cout << endl << "Stack:" << endl;
 

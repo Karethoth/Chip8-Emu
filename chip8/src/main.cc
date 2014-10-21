@@ -41,7 +41,7 @@ int main( int argc, char **argv )
 
 
 	// Load the program
-	if( !chip8.LoadProgram( "test23.ch8" ) )
+	if( !chip8.LoadProgram( "test.ch8" ) )
 	{
 		shouldStop = true;
 	}
