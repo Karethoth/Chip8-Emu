@@ -1,3 +1,5 @@
+#define DEBUG_MODE true
+
 #include "chip8.hh"
 #include <iostream>
 #include <SDL2/SDL.h>
@@ -41,18 +43,27 @@ int main( int argc, char **argv )
 	{
 		chip8.LoadProgram( "test.ch8" );
 
+		chip8.StartTimerThread();
+
 		while( true )
 		{
+			// Timing & Delay
+			auto cycleEnd = chrono::high_resolution_clock::now() + chrono::microseconds( 20 );
+
 			HandleInput();
 			//chip8.PrintInfo();
 			//chip8.PrintStack();
 			//getc( stdin );
 			chip8.StepCycle();
 
+
 			SDL_UpdateTexture( texture, nullptr, chip8.vram, displayWidth * sizeof( int ) );
 			SDL_RenderClear( renderer );
 			SDL_RenderCopy( renderer, texture, nullptr, nullptr );
 			SDL_RenderPresent( renderer );
+
+			// Sleep for the excess time
+			this_thread::sleep_until( cycleEnd );
 		}
 	}
 
@@ -60,6 +71,8 @@ int main( int argc, char **argv )
 	{
 		cout << "Ran to error '" << e << "', exiting.." << endl;
 	}
+
+	chip8.StopTimerThread();
 
 	SDL_DestroyTexture( texture );
 	SDL_DestroyRenderer( renderer );

@@ -15,7 +15,8 @@ static uniform_int_distribution<> dis( 0, 255 );
 
 CPU::CPU() :
 	I(0), Time(0), Tone(0),
-	PC(0x200), SP(0), Key(0)
+	PC(0x200), SP(0), Key(0),
+	killTimer(false)
 {
 	memset( ram, 0, 0x1000 );
 	memset( vram, 0, sizeof( vram ) );
@@ -67,13 +68,19 @@ u16 CPU::ReadInstruction( u16 addr ) const
 
 static void DebugPrint( const string &msg )
 {
-	cout << msg << endl;
+	#if DEBUG_MODE
+		cout << msg << endl;
+	#endif
 }
+
 
 void CPU::ExecInstruction( u16 instr )
 {
-	cout << "Executing " << setw( 4 ) << setfill( '0' ) << hex
-	     << static_cast<int>( instr ) << " @ " << static_cast<int>( PC ) << " : ";
+	#if DEBUG_MODE
+		cout << "Executing " << setw( 4 ) << setfill( '0' ) << hex
+			 << static_cast<int>( instr ) << " @ " << static_cast<int>( PC ) << " : ";
+	#endif
+
 	if( !instr )
 	{
 		DebugPrint( "0000 - Null" );
@@ -407,6 +414,40 @@ void CPU::PrintStack()
 		cout << "\t" << hex << i << ":" << setfill('0') << setw(4) << static_cast<int>( stack[i] ) << endl;
 	}
 	cout << endl << endl;
+}
+
+
+void timerLoop( CPU *cpu )
+{
+	while( cpu && !cpu->killTimer )
+	{
+		if( cpu->Time > 0 )
+		{
+			cpu->Time--;
+			cout << cpu->Tone << endl;
+		}
+
+		if( cpu->Tone > 0 )
+		{
+			cpu->Tone--;
+			cout << cpu->Tone << endl;
+		}
+
+		this_thread::sleep_for( chrono::milliseconds( 16 ) );
+	}
+}
+
+
+void CPU::StartTimerThread()
+{
+	timerThread = thread( timerLoop, this );
+}
+
+
+void CPU::StopTimerThread()
+{
+	killTimer = true;
+	timerThread.join();
 }
 
 

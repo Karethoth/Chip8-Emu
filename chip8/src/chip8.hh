@@ -55,7 +55,10 @@ namespace chip8emu
 		u8  ram[0x1000];             // System RAM
 
 		// Video RAM
-		u32  vram[displayHeight * displayWidth]; 
+		u32  vram[displayHeight * displayWidth];
+
+		// Flag for timer thread
+		std::atomic<bool> killTimer;
 
 		// Constructor
 		CPU();
@@ -66,12 +69,17 @@ namespace chip8emu
 		void PrintInfo();
 		void PrintStack();
 
+		void StartTimerThread();
+		void StopTimerThread();
+
 
 	  private:
 		u16  ReadInstruction( u16 addr ) const;
 		void ExecInstruction( u16 instr );
 		bool Match( u16 instr, Chip8Instruction pattern, u16 mask );
 		void Draw( u8 x, u8 y, u8 n );
+
+		std::thread       timerThread;
 	};
 };
 
