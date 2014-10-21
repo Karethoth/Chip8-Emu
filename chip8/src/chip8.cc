@@ -26,25 +26,33 @@ CPU::CPU() :
 }
 
 
-void CPU::LoadProgram( const string &path )
+bool CPU::LoadProgram( const string &path )
 {
 	ifstream inp( path, ios::in | ios::binary );
 	if( !inp )
 	{
 		cout << "Failed to open '" << path << "'!" << endl;
-		return;
+		return false;
 	}
 
-	u16 offset = 0;
+	u16 memOffset = 0;
 
-	while( inp.good() )
+	while( inp.good() && memOffset <  (totalRam - programStart) )
 	{
 		auto c = static_cast<u8>( inp.get() );
-		ram[programStart + offset] = c;
-		offset++;
+		ram[programStart + memOffset] = c;
+		memOffset++;
 	}
 
 	inp.close();
+
+	if( memOffset >= (totalRam - programStart) )
+	{
+		cout << "Too big file!'" << endl;
+		return false;
+	}
+
+	return true;
 }
 
 
@@ -57,7 +65,7 @@ void CPU::StepCycle()
 
 u16 CPU::ReadInstruction( u16 addr ) const
 {
-	if( addr > 0xFFF )
+	if( addr >= totalRam )
 	{
 		cout << "Trying to access memory location " << hex << addr << "! Ignoring.." << endl;
 		throw string( "Bad read" );
@@ -450,7 +458,7 @@ void CPU::Draw( u8 x, u8 y, u8 n )
 	u8 posX = V[x];
 	u8 posY = V[y];
 
-	if( I > sizeof( ram ) )
+	if( I >= totalRam )
 	{
 		throw string( "RAM overflow!" );
 	}

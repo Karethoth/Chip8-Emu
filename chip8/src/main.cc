@@ -13,6 +13,7 @@ void HandleInput();
 
 
 CPU chip8;
+bool shouldStop = false;
 
 
 int main( int argc, char **argv )
@@ -28,6 +29,7 @@ int main( int argc, char **argv )
 		0
     );
 
+	// Create the renderer and texture for the actual display
 	SDL_Renderer *renderer = SDL_CreateRenderer( window, -1, 0 );
 	SDL_Texture  *texture  = SDL_CreateTexture(
 		renderer,
@@ -37,30 +39,40 @@ int main( int argc, char **argv )
 		displayHeight
 	);
 
+
+	// Load the program
+	if( !chip8.LoadProgram( "test23.ch8" ) )
+	{
+		shouldStop = true;
+	}
+
+
+	// Start the timer thread, which
+	// decrements timers when appropriate
+	chip8.StartTimerThread();
+
+
 	try
 	{
-		chip8.LoadProgram( "test.ch8" );
-
-		chip8.StartTimerThread();
-
-		while( true )
+		// The main loop
+		while( !shouldStop )
 		{
-			// Timing & Delay
-			auto cycleEnd = chrono::high_resolution_clock::now() + chrono::microseconds( 20 );
+			// Calculate when this cycle is supposed to end
+			auto cycleEnd = chrono::high_resolution_clock::now() + chrono::microseconds( cycleLength );
 
+			// Handle all input as appropriate
 			HandleInput();
-			//chip8.PrintInfo();
-			//chip8.PrintStack();
-			//getc( stdin );
+
+			// Run the current instruction
 			chip8.StepCycle();
 
-
+			// Update the SDL screen
 			SDL_UpdateTexture( texture, nullptr, chip8.vram, displayWidth * sizeof( int ) );
 			SDL_RenderClear( renderer );
 			SDL_RenderCopy( renderer, texture, nullptr, nullptr );
 			SDL_RenderPresent( renderer );
 
-			// Sleep for the excess time
+			// Sleep for the excess cycle time
 			this_thread::sleep_until( cycleEnd );
 		}
 	}

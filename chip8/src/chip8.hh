@@ -14,11 +14,15 @@ namespace chip8emu
 	typedef unsigned int   u32;
 
 
-
 	// Constants
+	const u8  stackSize     = 16;
+	const u16 totalRam      = 0x1000;
 	const u16 programStart  = 0x200;
+
 	const u8  displayWidth  = 64;
 	const u8  displayHeight = 32;
+
+	const size_t cycleLength = 20; // Microseconds
 
 
 	// Helper Functions
@@ -33,6 +37,7 @@ namespace chip8emu
 	{
 		return static_cast<u8>( src >> offset ) & 0xF;
 	}
+
 
 	// The CPU Structure
 	struct CPU
@@ -50,8 +55,8 @@ namespace chip8emu
 		std::atomic<u8>  Time, Tone; // Time and Tone Registers
 
 		// Memory
-		u16 stack[16];               // Stack
-		u8  ram[0x1000];             // System RAM
+		u16 stack[stackSize];        // Stack
+		u8  ram[totalRam];           // System RAM
 
 		// Video RAM
 		u32  vram[displayHeight * displayWidth];
@@ -63,7 +68,7 @@ namespace chip8emu
 		CPU();
 
 		// Methods
-		void LoadProgram( const std::string &path );
+		bool LoadProgram( const std::string &path );
 		void StepCycle();
 		void PrintInfo();
 		void PrintStack();
