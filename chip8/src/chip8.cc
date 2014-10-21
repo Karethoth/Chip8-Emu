@@ -25,7 +25,7 @@ CPU::CPU() :
 
 void CPU::LoadProgram( const string &path )
 {
-	ifstream inp( path );
+	ifstream inp( path, ios::in | ios::binary );
 	if( !inp )
 	{
 		cout << "Failed to open '" << path << "'!" << endl;
@@ -72,6 +72,7 @@ void CPU::ExecInstruction( u16 instr )
 	if( !instr )
 	{
 		// Null instruction is handled as a NOP
+		throw string( "Null Instruction" );
 	}
 
 	// 00E0 - CLS
@@ -128,6 +129,16 @@ void CPU::ExecInstruction( u16 instr )
 		auto x = GetNibble<>( instr, 8 );
 		auto kk = static_cast<u8>( instr & 0x00FF );
 		if( V[x] == kk )
+		{
+		}
+	}
+
+	// 4xkk - SNE Vx, byte
+	else if( Match( instr, SNE, 0xF000 ) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		auto kk = static_cast<u8>( instr & 0x00FF );
+		if( V[x] != kk )
 		{
 			PC += 2;
 		}
@@ -208,13 +219,19 @@ void CPU::ExecInstruction( u16 instr )
 		V[x] -= V[y];
 	}
 
+	// 8xy6 - SHR Vx {, Vy}
+	else if( Match( instr, SHR, 0xF00F ) )
+	{
+		auto x = GetNibble<>( instr, 8 );
+		V[0xF] = V[x] & 0x1;
+		V[x] /= 2;
+	}
+
 	// 8xyE - SHL Vx {, Vy}
 	else if( Match( instr, SHL, 0xF00F ) )
 	{
 		auto x = GetNibble<>( instr, 8 );
-		auto y = GetNibble<>( instr, 4 );
 		V[0xF] = V[x] >> 7;
-
 		V[x] *= 2;
 	}
 
@@ -388,8 +405,8 @@ void CPU::Draw( u8 x, u8 y, u8 n )
 
 	for( u8 i=0; i < n; i++ )
 	{
-		vram[posY*displayWidth/8 + i*displayWidth/8 + posX/8] ^= ram[I+i];
-		//cout << "Drew: " << static_cast<int>( posX/8 ) << "," << static_cast<int>( posY/8+i ) << ": " << hex << ", " << static_cast<int>( ram[I+i] ) << endl;
+		//vram[posY*displayWidth/8 + i*displayWidth/8 + posX/8] ^= ram[I+i];
+		cout << "Drew: " << static_cast<int>( posX/8 ) << "," << static_cast<int>( posY/8+i ) << ": " << hex << static_cast<int>( ram[I+i] ) << endl;
 	}
 }
 
