@@ -227,12 +227,14 @@ void HandleSdlEventsTask()
 			switch( event.type )
 			{
 			 case SDL_QUIT:
+				chip8.killTimer = true;
 				shouldStop = true;
 				break;
 
 			 case SDL_WINDOWEVENT:
 				if( event.window.event == SDL_WINDOWEVENT_CLOSE )
 				{
+					chip8.killTimer = true;
 					shouldStop = true;
 				}
 				break;
