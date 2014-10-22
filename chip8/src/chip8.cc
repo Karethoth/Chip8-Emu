@@ -316,6 +316,28 @@ void CPU::ExecInstruction( u16 instr )
 		Draw( x, y, n );
 	}
 
+	// Ex9E - SKP Vx
+	else if( Match( instr, SKP, 0xF0FF ) )
+	{
+		DebugPrint( "Ex9E - SKP Vx" );
+		auto x = GetNibble<>( instr, 8 );
+		if( Key == x )
+		{
+			PC += 2;
+		}
+	}
+
+	// ExA1 - SKNP Vx
+	else if( Match( instr, SKNP, 0xF0FF ) )
+	{
+		DebugPrint( "ExA1 - SKNP Vx" );
+		auto x = GetNibble<>( instr, 8 );
+		if( Key != x )
+		{
+			PC += 2;
+		}
+	}
+
 	// Fx07 - LD Vx, DT
 	else if( Match( instr, LDDT, 0xF0FF ) )
 	{
@@ -355,6 +377,16 @@ void CPU::ExecInstruction( u16 instr )
 		DebugPrint( "Fx18 - LD DT, Vx" );
 		auto x = GetNibble<>( instr, 8 );
 		Tone = V[x];
+	}
+
+	// Fx29 - LD F, Vx
+	else if( Match( instr, LDSP, 0xF0FF ) )
+	{
+		DebugPrint( "Fx29 - LD F, Vx" );
+		auto x = GetNibble<>( instr, 8 );
+		// Set I to point to the location
+		// of hex sprite corresponding to x
+		I = 0x100 + x * 5;
 	}
 
 	// Fx1E - ADD I, Vx
