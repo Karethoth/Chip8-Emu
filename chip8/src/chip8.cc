@@ -230,6 +230,15 @@ void CPU::ExecInstruction( u16 instr )
 		V[x] &= V[y];
 	}
 
+	// 8xy3 - XOR Vx, Vy
+	else if( Match( instr, XOR, 0xF00F) )
+	{
+		DebugPrint( "8xy3 - XOR Vx, Vy" );
+		auto x = GetNibble<>( instr, 8 );
+		auto y = GetNibble<>( instr, 4 );
+		V[x] ^= V[y];
+	}
+
 	// 8xy4 - ADD Vx, Vy
 	else if( Match( instr, ADD2, 0xF00F ) )
 	{
@@ -250,11 +259,7 @@ void CPU::ExecInstruction( u16 instr )
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
 
-		if( V[x] > V[y] )
-			V[0xF] = 1;
-		else
-			V[0xF] = 0;
-
+		V[0xF] = static_cast<u8>( V[x] > V[y] );
 		V[x] -= V[y];
 	}
 
@@ -265,6 +270,17 @@ void CPU::ExecInstruction( u16 instr )
 		auto x = GetNibble<>( instr, 8 );
 		V[0xF] = V[x] & 0x1;
 		V[x] /= 2;
+	}
+
+	// 8xy7 - SUBN Vx, Vy
+	else if( Match( instr, SUBN, 0xF00F ) )
+	{
+		DebugPrint( "8xy7 - SUBN Vx, Vy" );
+		auto x = GetNibble<>( instr, 8 );
+		auto y = GetNibble<>( instr, 4 );
+
+		V[0xF] = static_cast<u8>( V[y] > V[x] );
+		V[x] = V[y] - V[x];
 	}
 
 	// 8xyE - SHL Vx {, Vy}
@@ -294,6 +310,13 @@ void CPU::ExecInstruction( u16 instr )
 	{
 		DebugPrint( "Annn - LD I, nnn" );
 		I = instr & 0x0FFF;
+	}
+
+	// Bnnn - JP V0, addr
+	else if( Match( instr, JP2, 0xF000 ) )
+	{
+		DebugPrint( "Bnnn - JP V0, addr" );
+		PC = (instr + V[0]) & 0x0FFF;
 	}
 
 	// Cxkk - RND Vx, byte
@@ -379,6 +402,14 @@ void CPU::ExecInstruction( u16 instr )
 		Tone = V[x];
 	}
 
+	// Fx1E - ADD I, Vx
+	else if( Match( instr, ADD3, 0xF0FF ) )
+	{
+		DebugPrint( "FX1E - ADD I, Vx" );
+		auto x = GetNibble<>( instr, 8 );
+		I += V[x];
+	}
+
 	// Fx29 - LD F, Vx
 	else if( Match( instr, LDSP, 0xF0FF ) )
 	{
@@ -389,12 +420,19 @@ void CPU::ExecInstruction( u16 instr )
 		I = 0x100 + x * 5;
 	}
 
-	// Fx1E - ADD I, Vx
-	else if( Match( instr, ADD3, 0xF0FF ) )
+	// Fx33 - LD B, Vx
+	else if( Match( instr, STBCD, 0xF0FF ) )
 	{
-		DebugPrint( "FX1E - ADD I, Vx" );
+		DebugPrint( "Fx33 - LD B, Vx" );
 		auto x = GetNibble<>( instr, 8 );
-		I += V[x];
+		if( I+2 > totalRam )
+		{
+			throw string( "RAM overflow!" );
+		}
+
+		ram[I]   = static_cast<u8>( x / 100 );
+		ram[I+1] = static_cast<u8>( (x % 100) / 10 );
+		ram[I+2] = static_cast<u8>( (x % 10) );
 	}
 
 	// Fx55 - LD [I], Vx
