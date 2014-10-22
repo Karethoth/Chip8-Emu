@@ -26,10 +26,12 @@ Chip8::Chip8() :
 	PC(0x200), SP(0), Key(0),
 	killTimer(false)
 {
+	// Clear ram, vram and stack
 	memset( ram, 0, totalRam );
 	memset( vram, 0, sizeof( vram ) );
 	memset( stack, 0, stackSize*2 );
 
+	// Binary sprites for hexadecimal digits
 	static u8 hexDigits[] =
 	{
 		0xf0, 0x90, 0x90, 0x90, 0xf0, // 0
@@ -50,7 +52,9 @@ Chip8::Chip8() :
 		0xf0, 0x80, 0xf0, 0x80, 0x80  // F
 	};
 
-	for( int i=0; i < sizeof( hexDigits ); i++ )
+
+	// Copy the digits to the interpreter section
+	for( int i = 0; i < sizeof( hexDigits ); i++ )
 	{
 		ram[hexDigsStart + i ] = hexDigits[i];
 	}
@@ -59,6 +63,7 @@ Chip8::Chip8() :
 
 bool Chip8::LoadProgram( const string &path )
 {
+	// Open the program file
 	ifstream inp( path, ios::in | ios::binary );
 	if( !inp )
 	{
@@ -66,10 +71,20 @@ bool Chip8::LoadProgram( const string &path )
 		return false;
 	}
 
+	// Load the program in to the memory
 	u16 memOffset = 0;
+	bool tooBigFile = false;
 
-	while( inp.good() && memOffset <  (totalRam - programStart) )
+	while( inp.good()  )
 	{
+		// Check that we're still within the memory
+		if( (memOffset < (totalRam - programStart)) )
+		{
+			tooBigFile = true;
+			break;
+		}
+
+		// Load the byte
 		auto c = static_cast<u8>( inp.get() );
 		ram[programStart + memOffset] = c;
 		memOffset++;
@@ -77,9 +92,11 @@ bool Chip8::LoadProgram( const string &path )
 
 	inp.close();
 
-	if( memOffset >= (totalRam - programStart) )
+
+	// Check that the file wasn't too big
+	if( tooBigFile )
 	{
-		cout << "Too big file!'" << endl;
+		cout << "Too big file, couldn't fit it to ram!'" << endl;
 		return false;
 	}
 
@@ -96,23 +113,28 @@ void Chip8::StepCycle()
 
 u16 Chip8::ReadInstruction( u16 addr ) const
 {
-	if( addr >= totalRam )
+	if( addr >= totalRam - 1 )
 	{
-		cout << "Trying to access memory location " << hex << addr << "! Ignoring.." << endl;
+		cout << "Trying to read instruction from "
+		     << hex << addr << "! Aborting..." << endl;
+
 		throw string( "Bad read" );
-		return 0;
 	}
 
-	return static_cast<u16>( ram[addr] << 8 ) | static_cast<u16>( ram[addr+1] );
+	// Return
+	return static_cast<u16>( ram[addr] << 8 ) |
+	       static_cast<u16>( ram[addr+1] );
 }
 
 
 void Chip8::ExecInstruction( u16 instr )
 {
+	// Try to find the match for instruction and
+	// execute it accordingly.
+
 	if( !instr )
 	{
 		// Null instruction is handled as a NOP
-		throw string( "Null Instruction" );
 	}
 
 	// 00E0 - CLS
@@ -124,9 +146,9 @@ void Chip8::ExecInstruction( u16 instr )
 	// 00EE - RET
 	else if( Match( instr, RET, 0xFFFF ) )
 	{
-		if( SP > 0xF )
+		if( SP <= 0x0 )
 		{
-			throw string( "Stack overflow!" );
+			throw string( "Stack underflow!" );
 		}
 
 		PC = stack[SP];
@@ -142,7 +164,7 @@ void Chip8::ExecInstruction( u16 instr )
 	// 1nnn - JP addr
 	else if( Match( instr, JP, 0xF000 ) )
 	{
-		PC = static_cast<u16>( instr & 0x0FFF );
+		PC = instr & 0x0FFF;
 		return;
 	}
 
@@ -157,7 +179,7 @@ void Chip8::ExecInstruction( u16 instr )
 		SP++;
 		stack[SP] = PC;
 
-		PC = static_cast<u16>( instr & 0x0FFF );
+		PC = instr & 0x0FFF;
 		return;
 	}
 
@@ -291,6 +313,7 @@ void Chip8::ExecInstruction( u16 instr )
 	else if( Match( instr, SHL, 0xF00F ) )
 	{
 		auto x = GetNibble<>( instr, 8 );
+
 		V[0xF] = V[x] >> 7;
 		V[x]  *= 2;
 	}
@@ -411,8 +434,9 @@ void Chip8::ExecInstruction( u16 instr )
 	{
 		auto x = GetNibble<>( instr, 8 );
 
-		// Set I to point to the location
-		// of hex sprite corresponding to x
+		// Set I to point to the location of
+		// hex sprite corresponding to x.
+		// (The sprites are 5 bytes in size)
 		I = hexDigsStart + x * 5;
 	}
 
@@ -421,11 +445,14 @@ void Chip8::ExecInstruction( u16 instr )
 	{
 		auto x = GetNibble<>( instr, 8 );
 
+		// Check we have enough memory
+		// to save 3 bytes to [I+2].
 		if( I+2 > totalRam )
 		{
 			throw string( "RAM overflow!" );
 		}
 
+		// Split x to hundreds, tens and ones
 		ram[I]   = static_cast<u8>( x / 100 );
 		ram[I+1] = static_cast<u8>( (x % 100) / 10 );
 		ram[I+2] = static_cast<u8>( (x % 10) );
@@ -437,7 +464,7 @@ void Chip8::ExecInstruction( u16 instr )
 		auto x = GetNibble<>( instr, 8 );
 
 		u16 offset = 0;
-		for( u8 i=0; i <= x; i++ )
+		for( u8 i = 0; i <= x; i++ )
 		{
 			ram[I+offset++] = V[i];
 		}
@@ -449,67 +476,31 @@ void Chip8::ExecInstruction( u16 instr )
 		auto x = GetNibble<>( instr, 8 );
 
 		u16 offset = 0;
-		for( u8 i=0; i <= x; i++ )
+		for( u8 i = 0; i <= x; i++ )
 		{
 			V[i] = ram[I+offset];
 			offset++;
 		}
 	}
 
+	// Unknown instruction
 	else
 	{
-		cout << "Trying to exec instruction " << hex << static_cast<int>( instr ) << " @ " << PC
-			 << " failed, it's not implemented!" << endl;
+		cout << "Trying to exec instruction " << hex << static_cast<int>( instr )
+		     << " @ " << PC << " failed, it's not implemented!" << endl;
 
-		getc( stdin );
+		throw string( "Unknown instruction" );
 	}
-
 
 	// Increment PC to point to the next instruction
 	PC += 2;
 }
 
 
-void Chip8::PrintInfo() const
-{
-	cout << endl << "General purpose registers:" << endl;
-
-	for( int i=0; i <= 0xF; i++ )
-	{
-		cout << "V" << hex << i << ":" << setfill('0') << setw(2) << static_cast<int>( V[i] ) << ", ";
-		if( !((i+1)%8) )
-		{
-			cout << endl;
-		}
-	}
-	cout << endl;
-
-	cout << " I:" << setfill( '0' )  << setw( 4 ) << static_cast<int>( I ) << ", "
-	     << "PC:" << setfill( '0' )  << setw( 4 ) << static_cast<int>( PC ) << ", "
-	     << "SP:" << setfill( '0' )  << setw( 2 ) << static_cast<int>( SP ) << ", "
-	     << "Ti:" << setfill( '0' )  << setw( 2 ) << static_cast<int>( Time ) << ", "
-	     << "To:" << setfill( '0' )  << setw( 2 ) << static_cast<int>( Tone ) << ", "
-	     << "Key:" << setfill( '0' ) << setw( 4 ) << static_cast<int>( Key ) << endl;
-
-	cout << endl;
-}
-
-
-void Chip8::PrintStack() const
-{
-	cout << endl << "Stack:" << endl;
-
-	for( int i=0; i <= SP; i++ )
-	{
-		cout << "\t" << hex << i << ":" << setfill('0') << setw(4) << static_cast<int>( stack[i] ) << endl;
-	}
-	cout << endl << endl;
-}
-
-
 void _TimerLoop( Chip8 *Chip8 );
 void Chip8::StartTimerThread()
 {
+	killTimer = false;
 	timerThread = thread( _TimerLoop, this );
 }
 
@@ -539,33 +530,34 @@ void Chip8::Draw( u8 x, u8 y, u16 addr, u8 len )
 		throw string( "RAM overflow!" );
 	}
 
-	for( u8 i=0; i < len; i++ )
+	for( u8 i = 0; i < len; i++ )
 	{
 		u32 spriteLine = ram[I+i];
 		u32 rowStart   = displayWidth * ((y + i) % displayHeight);
 
-		for( u8 _x=0; _x < 8; _x++ )
+		for( u8 _x = 0; _x < 8; _x++ )
 		{
-			auto on   = GetBit( spriteLine, 7-_x );
+			auto on   = GetBit( spriteLine, 7 - _x );
 			auto xPos = (x + _x) % displayWidth;
+
 			vram[rowStart + xPos] ^= on ? 0xffff : 0x0000;
 		}
 	}
 }
 
 
-void _TimerLoop( Chip8 *Chip8 )
+void _TimerLoop( Chip8 *chip8 )
 {
-	while( Chip8 && !Chip8->killTimer )
+	while( chip8 && !chip8->killTimer )
 	{
-		if( Chip8->Time > 0 )
+		if( chip8->Time > 0 )
 		{
-			Chip8->Time--;
+			chip8->Time--;
 		}
 
-		if( Chip8->Tone > 0 )
+		if( chip8->Tone > 0 )
 		{
-			Chip8->Tone--;
+			chip8->Tone--;
 		}
 
 		this_thread::sleep_for( chrono::milliseconds( 16 ) );

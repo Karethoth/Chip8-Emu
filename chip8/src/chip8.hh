@@ -73,9 +73,6 @@ namespace chip8emu
 		bool LoadProgram( const std::string &path );
 		void StepCycle();
 
-		void PrintInfo() const;
-		void PrintStack() const;
-
 		void StartTimerThread();
 		void StopTimerThread();
 
