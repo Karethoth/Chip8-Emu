@@ -51,7 +51,7 @@ namespace chip8emu
 		u8  SP;                      // Stack Pointer
 
 		// Atomic Special Registers
-		std::atomic<u16> Key;        // Key Register (for input)
+		std::atomic<u8>  Key;        // Key Register (for input)
 		std::atomic<u8>  Time, Tone; // Time and Tone Registers
 
 		// Memory

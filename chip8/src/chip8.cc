@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <fstream>
 #include <random>
+#include <SDL2/SDL.h>
 
 using namespace std;
 using namespace chip8emu;
@@ -321,6 +322,23 @@ void CPU::ExecInstruction( u16 instr )
 		DebugPrint( "Fx07 - LD Vx, DT" );
 		auto x = GetNibble<>( instr, 8 );
 		V[x] = Time;
+	}
+
+	// Fx0A - LD Vx, K
+	else if( Match( instr, LDKEY, 0xF0FF ) )
+	{
+		DebugPrint( "Fx0A - LD Vx, K" );
+		auto x = GetNibble<>( instr, 8 );
+
+		// Wait for input, frequently check that we
+		// are not quiting/killing the other thread
+		u8 inpKey;
+		while( !(inpKey = Key) && !killTimer )
+		{
+			SDL_PumpEvents();
+			this_thread::sleep_for( chrono::milliseconds( 1 ) );
+		}
+		V[x] = inpKey;
 	}
 
 	// Fx15 - LD DT, Vx

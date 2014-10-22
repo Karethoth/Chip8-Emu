@@ -9,7 +9,7 @@ using namespace std;
 using namespace chip8emu;
 
 
-void HandleSdlEvents();
+void HandleSdlEventsTask();
 
 
 CPU chip8;
@@ -46,11 +46,12 @@ int main( int argc, char **argv )
 		shouldStop = true;
 	}
 
-
-	// Start the timer thread, which
-	// decrements timers when appropriate
+	// Start the timer thread, which decrements
+	// timers when appropriate (At 60Hz)
 	chip8.StartTimerThread();
 
+	// Launch a thread to handle sdl events
+	thread eventThread( HandleSdlEventsTask );
 
 	try
 	{
@@ -60,8 +61,8 @@ int main( int argc, char **argv )
 			// Calculate when this cycle is supposed to end
 			auto cycleEnd = chrono::high_resolution_clock::now() + chrono::microseconds( cycleLength );
 
-			// Handle all input as appropriate
-			HandleSdlEvents();
+			// Pump SDL Events
+			SDL_PumpEvents();
 
 			// Run the current instruction
 			chip8.StepCycle();
@@ -82,13 +83,19 @@ int main( int argc, char **argv )
 		cout << "Ran to error '" << e << "', exiting.." << endl;
 	}
 
+	// Wait for the timer thread to stop
 	chip8.StopTimerThread();
 
+	// Wait for the event handler thread to stop
+	eventThread.join();
+
+	// Cleanup SDL resources
 	SDL_DestroyTexture( texture );
 	SDL_DestroyRenderer( renderer );
 	SDL_DestroyWindow( window );
 	SDL_Quit();
 
+	// Wait for user input to quit
 	cout << endl << "Hit enter to quit." << endl;
 	getc( stdin );
 	return 0;
@@ -192,28 +199,33 @@ void HandleInput( const SDL_KeyboardEvent &inp  )
 }
 
 
-void HandleSdlEvents()
+void HandleSdlEventsTask()
 {
 	SDL_Event event;
-	while( SDL_PollEvent( &event ) )
+	while( !shouldStop )
 	{
-		switch( event.type )
+		while( SDL_PeepEvents( &event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT ) )
 		{
-		 case SDL_QUIT:
-			shouldStop = true;
-			break;
-
-		 case SDL_WINDOWEVENT:
-			if( event.window.event == SDL_WINDOWEVENT_CLOSE )
+			switch( event.type )
 			{
+			 case SDL_QUIT:
 				shouldStop = true;
-			}
-			break;
+				break;
 
-		 case SDL_KEYDOWN:
-		 case SDL_KEYUP:
-			HandleInput( event.key );
+			 case SDL_WINDOWEVENT:
+				if( event.window.event == SDL_WINDOWEVENT_CLOSE )
+				{
+					shouldStop = true;
+				}
+				break;
+
+			 case SDL_KEYDOWN:
+			 case SDL_KEYUP:
+				HandleInput( event.key );
+			}
 		}
+
+		this_thread::sleep_for( chrono::milliseconds( 1 ) );
 	}
 }
 
