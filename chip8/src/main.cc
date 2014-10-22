@@ -121,75 +121,93 @@ void HandleInput( const SDL_KeyboardEvent &inp  )
 	// Handle the possible emulator input
 	switch( inp.keysym.sym )
 	{
-	 case SDLK_2:
+
+	 case SDLK_5:
 	 case SDLK_UP:
-		chip8.Key = 2;
+	 case SDLK_KP_5:
+		chip8.Key = 5;
 		break;
 
 	 case SDLK_8:
 	 case SDLK_DOWN:
+	 case SDLK_KP_2:
 		chip8.Key = 8;
 		break;
 
-	 case SDLK_4:
-	 case SDLK_LEFT:
-		chip8.Key = 4;
-		break;
-
-	 case SDLK_6:
-	 case SDLK_RIGHT:
-		chip8.Key = 6;
-		break;
-
-	 case SDLK_0:
-		chip8.Key = 0;
-		break;
-
-	 case SDLK_1:
-		chip8.Key = 1;
-		break;
-
-	 case SDLK_3:
-		chip8.Key = 3;
-		break;
-
-	 case SDLK_5:
-		chip8.Key = 5;
-		break;
-
 	 case SDLK_7:
+	 case SDLK_LEFT:
+	 case SDLK_KP_1:
 		chip8.Key = 7;
 		break;
 
 	 case SDLK_9:
+	 case SDLK_RIGHT:
+	 case SDLK_KP_3:
 		chip8.Key = 9;
 		break;
 
+	 case SDLK_0:
+	 case SDLK_KP_0:
+		chip8.Key = 0;
+		break;
+
+	 case SDLK_1:
+	 case SDLK_KP_7:
+		chip8.Key = 1;
+		break;
+
+	 case SDLK_2:
+	 case SDLK_KP_8:
+		chip8.Key = 2;
+		break;
+
+	 case SDLK_3:
+	 case SDLK_KP_9:
+		chip8.Key = 3;
+		break;
+
+	 case SDLK_4:
+	 case SDLK_KP_4:
+		chip8.Key = 4;
+		break;
+
+	 case SDLK_6:
+	 case SDLK_KP_6:
+		chip8.Key = 6;
+		break;
+
 	 case SDLK_z:
+	 case 63:
 		chip8.Key = 0xA;
 		break;
 
 	 case SDLK_x:
+	 case SDLK_KP_ENTER:
 		chip8.Key = 0xA;
 		break;
 
 	 case SDLK_c:
+	 case SDLK_KP_MINUS:
 		chip8.Key = 0xB;
 		break;
 
 	 case SDLK_v:
+	 case SDLK_KP_PLUS:
 		chip8.Key = 0xC;
 		break;
 
 	 case SDLK_a:
+	 case SDLK_KP_MULTIPLY:
 		chip8.Key = 0xD;
 		break;
 
 	 case SDLK_s:
+	 case SDLK_KP_DIVIDE:
 		chip8.Key = 0xE;
 		break;
 
 	 case SDLK_d:
+	 case SDLK_KP_SPACE:
 		chip8.Key = 0xF;
 		break;
 
