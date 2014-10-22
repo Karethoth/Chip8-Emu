@@ -9,7 +9,7 @@ using namespace std;
 using namespace chip8emu;
 
 
-void HandleInput();
+void HandleSdlEvents();
 
 
 CPU chip8;
@@ -61,7 +61,7 @@ int main( int argc, char **argv )
 			auto cycleEnd = chrono::high_resolution_clock::now() + chrono::microseconds( cycleLength );
 
 			// Handle all input as appropriate
-			HandleInput();
+			HandleSdlEvents();
 
 			// Run the current instruction
 			chip8.StepCycle();
@@ -95,11 +95,125 @@ int main( int argc, char **argv )
 }
 
 
-void HandleInput()
+void HandleInput( const SDL_KeyboardEvent &inp  )
+{
+	// Check for escape key
+	if( inp.keysym.scancode == SDL_SCANCODE_ESCAPE )
+	{
+		shouldStop = true;
+		return;
+	}
+
+	// Just clear the chip input if any button is released
+	if( inp.state == SDL_RELEASED )
+	{
+		chip8.Key = 0;
+		return;
+	}
+
+	// Handle the possible emulator input
+	switch( inp.keysym.sym )
+	{
+	 case SDLK_2:
+	 case SDLK_UP:
+		chip8.Key = 2;
+		break;
+
+	 case SDLK_8:
+	 case SDLK_DOWN:
+		chip8.Key = 8;
+		break;
+
+	 case SDLK_4:
+	 case SDLK_LEFT:
+		chip8.Key = 4;
+		break;
+
+	 case SDLK_6:
+	 case SDLK_RIGHT:
+		chip8.Key = 6;
+		break;
+
+	 case SDLK_0:
+		chip8.Key = 0;
+		break;
+
+	 case SDLK_1:
+		chip8.Key = 1;
+		break;
+
+	 case SDLK_3:
+		chip8.Key = 3;
+		break;
+
+	 case SDLK_5:
+		chip8.Key = 5;
+		break;
+
+	 case SDLK_7:
+		chip8.Key = 7;
+		break;
+
+	 case SDLK_9:
+		chip8.Key = 9;
+		break;
+
+	 case SDLK_z:
+		chip8.Key = 0xA;
+		break;
+
+	 case SDLK_x:
+		chip8.Key = 0xA;
+		break;
+
+	 case SDLK_c:
+		chip8.Key = 0xB;
+		break;
+
+	 case SDLK_v:
+		chip8.Key = 0xC;
+		break;
+
+	 case SDLK_a:
+		chip8.Key = 0xD;
+		break;
+
+	 case SDLK_s:
+		chip8.Key = 0xE;
+		break;
+
+	 case SDLK_d:
+		chip8.Key = 0xF;
+		break;
+
+	 default:
+		chip8.Key = 0;
+	}
+}
+
+
+void HandleSdlEvents()
 {
 	SDL_Event event;
 	while( SDL_PollEvent( &event ) )
 	{
+		switch( event.type )
+		{
+		 case SDL_QUIT:
+			shouldStop = true;
+			break;
+
+		 case SDL_WINDOWEVENT:
+			if( event.window.event == SDL_WINDOWEVENT_CLOSE )
+			{
+				shouldStop = true;
+			}
+			break;
+
+		 case SDL_KEYDOWN:
+		 case SDL_KEYUP:
+			HandleInput( event.key );
+		}
 	}
 }
 
