@@ -40,8 +40,8 @@ namespace chip8emu
 	}
 
 
-	// The CPU Structure
-	struct CPU
+	// The Chip-8 Structure
+	struct Chip8
 	{
 		// General Purpose Registers
 		u8 V[16];
@@ -65,8 +65,9 @@ namespace chip8emu
 		// Flag for timer thread
 		std::atomic<bool> killTimer;
 
+
 		// Constructor
-		CPU();
+		Chip8();
 
 		// Methods
 		bool LoadProgram( const std::string &path );
@@ -83,9 +84,9 @@ namespace chip8emu
 		u16  ReadInstruction( u16 addr ) const;
 		void ExecInstruction( u16 instr );
 		bool Match( u16 instr, Chip8Instruction pattern, u16 mask );
-		void Draw( u8 x, u8 y, u8 n );
+		void Draw( u8 x, u8 y, u16 addr, u8 len );
 
-		std::thread       timerThread;
+		std::thread timerThread;
 	};
 };
 

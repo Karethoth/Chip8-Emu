@@ -12,7 +12,7 @@ using namespace chip8emu;
 void HandleSdlEventsTask();
 
 
-CPU chip8;
+Chip8 chip8;
 bool shouldStop = false;
 
 

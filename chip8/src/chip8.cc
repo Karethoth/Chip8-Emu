@@ -8,22 +8,27 @@
 using namespace std;
 using namespace chip8emu;
 
-//#define DEBUG_MODE
 
 
+// Random number generator
 random_device rd;
 static mt19937 gen( rd() );
 static uniform_int_distribution<> dis( 0, 255 );
 
 
-CPU::CPU() :
+// The loop for the timer thread
+void _TimerLoop( Chip8 *Chip8 );
+
+
+
+Chip8::Chip8() :
 	I(0), Time(0), Tone(0),
 	PC(0x200), SP(0), Key(0),
 	killTimer(false)
 {
 	memset( ram, 0, totalRam );
 	memset( vram, 0, sizeof( vram ) );
-	memset( stack, 0, 32 );
+	memset( stack, 0, stackSize*2 );
 
 	static u8 hexDigits[] =
 	{
@@ -52,7 +57,7 @@ CPU::CPU() :
 }
 
 
-bool CPU::LoadProgram( const string &path )
+bool Chip8::LoadProgram( const string &path )
 {
 	ifstream inp( path, ios::in | ios::binary );
 	if( !inp )
@@ -82,14 +87,14 @@ bool CPU::LoadProgram( const string &path )
 }
 
 
-void CPU::StepCycle()
+void Chip8::StepCycle()
 {
 	auto instr = ReadInstruction( PC );
 	ExecInstruction( instr );
 }
 
 
-u16 CPU::ReadInstruction( u16 addr ) const
+u16 Chip8::ReadInstruction( u16 addr ) const
 {
 	if( addr >= totalRam )
 	{
@@ -102,24 +107,10 @@ u16 CPU::ReadInstruction( u16 addr ) const
 }
 
 
-static void DebugPrint( const string &msg )
+void Chip8::ExecInstruction( u16 instr )
 {
-	#ifdef DEBUG_MODE
-		cout << msg << endl;
-	#endif
-}
-
-
-void CPU::ExecInstruction( u16 instr )
-{
-	#ifdef DEBUG_MODE
-		cout << "Executing " << setw( 4 ) << setfill( '0' ) << hex
-			 << static_cast<int>( instr ) << " @ " << static_cast<int>( PC ) << " : ";
-	#endif
-
 	if( !instr )
 	{
-		DebugPrint( "0000 - Null" );
 		// Null instruction is handled as a NOP
 		throw string( "Null Instruction" );
 	}
@@ -127,14 +118,12 @@ void CPU::ExecInstruction( u16 instr )
 	// 00E0 - CLS
 	else if( Match( instr, CLS, 0xFFFF ) )
 	{
-		DebugPrint( "00E0 - Clear screen" );
 		memset( vram, 0, displayHeight * displayWidth * sizeof( u32 ) );
 	}
 
 	// 00EE - RET
 	else if( Match( instr, RET, 0xFFFF ) )
 	{
-		DebugPrint( "00EE - RET" );
 		if( SP > 0xF )
 		{
 			throw string( "Stack overflow!" );
@@ -148,13 +137,11 @@ void CPU::ExecInstruction( u16 instr )
 	else if( !(instr & 0xF000) && instr )
 	{
 		// Ignored, handled as NOP
-		DebugPrint( "0nnn - SYS/NOP" );
 	}
 
 	// 1nnn - JP addr
 	else if( Match( instr, JP, 0xF000 ) )
 	{
-		DebugPrint( "1nnn - JP nnn" );
 		PC = static_cast<u16>( instr & 0x0FFF );
 		return;
 	}
@@ -162,7 +149,6 @@ void CPU::ExecInstruction( u16 instr )
 	// 2nnn - CALL addr
 	else if( Match( instr, CALL, 0xF000 ) )
 	{
-		DebugPrint( "2nnn - CALL nnn" );
 		if( SP > 0xF )
 		{
 			throw string( "Stack overflow!" );
@@ -172,16 +158,15 @@ void CPU::ExecInstruction( u16 instr )
 		stack[SP] = PC;
 
 		PC = static_cast<u16>( instr & 0x0FFF );
-		//cout << "Calling " << hex << static_cast<int>( PC ) << endl;
 		return;
 	}
 
 	// 3xkk - SE Vx, byte
 	else if( Match( instr, SE, 0xF000 ) )
 	{
-		DebugPrint( "3xkk - SE Vx, kk" );
 		auto x = GetNibble<>( instr, 8 );
 		auto kk = static_cast<u8>( instr & 0x00FF );
+
 		if( V[x] == kk )
 		{
 			PC += 2;
@@ -191,9 +176,9 @@ void CPU::ExecInstruction( u16 instr )
 	// 4xkk - SNE Vx, byte
 	else if( Match( instr, SNE, 0xF000 ) )
 	{
-		DebugPrint( "4xkk - SNE Vx, kk" );
 		auto x = GetNibble<>( instr, 8 );
 		auto kk = static_cast<u8>( instr & 0x00FF );
+
 		if( V[x] != kk )
 		{
 			PC += 2;
@@ -203,9 +188,9 @@ void CPU::ExecInstruction( u16 instr )
 	// 5xy0 - SE Vx, Vy
 	else if( Match( instr, SE2, 0xF00F ) )
 	{
-		DebugPrint( "5xy0 - SE Vx, Vy" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
+
 		if( V[x] == V[y] )
 		{
 			PC += 2;
@@ -215,7 +200,6 @@ void CPU::ExecInstruction( u16 instr )
 	// 6xkk - LD Vx, byte
 	else if( Match( instr, STRG, 0xF000 ) )
 	{
-		DebugPrint( "6xkk - LD Vx, kk" );
 		auto x = GetNibble<>( instr, 8 );
 		V[x] = static_cast<u8>( instr & 0x00FF );
 	}
@@ -223,7 +207,6 @@ void CPU::ExecInstruction( u16 instr )
 	// 7xkk - ADD Vx, byte
 	else if( Match( instr, ADD, 0xF000) )
 	{
-		DebugPrint( "7xkk - ADD Vx, kk" );
 		auto x = GetNibble<>( instr, 8 );
 		V[x] += static_cast<u8>( instr & 0x00FF );
 	}
@@ -231,96 +214,90 @@ void CPU::ExecInstruction( u16 instr )
 	// 8xy0 - LD Vx, Vy
 	else if( Match( instr, STRG2, 0xF00F) )
 	{
-		DebugPrint( "8xy0 - LD Vx, Vy" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
+
 		V[x] = V[y];
 	}
 
 	// 8xy1 - OR Vx, Vy
 	else if( Match( instr, OR, 0xF00F) )
 	{
-		DebugPrint( "8xy1 - OR Vx, Vy" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
+
 		V[x] |= V[y];
 	}
 
 	// 8xy2 - AND Vx, Vy
 	else if( Match( instr, AND, 0xF00F) )
 	{
-		DebugPrint( "8xy2 - AND Vx, Vy" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
+
 		V[x] &= V[y];
 	}
 
 	// 8xy3 - XOR Vx, Vy
 	else if( Match( instr, XOR, 0xF00F) )
 	{
-		DebugPrint( "8xy3 - XOR Vx, Vy" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
+
 		V[x] ^= V[y];
 	}
 
 	// 8xy4 - ADD Vx, Vy
 	else if( Match( instr, ADD2, 0xF00F ) )
 	{
-		DebugPrint( "8xy4 - ADD Vx, Vy" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
 
 		u16 sum = V[x] + V[y];
-		V[0xF] = sum > 0xFF;
-
-		V[x] = static_cast<u8>( sum & 0xFF );
+		V[0xF]  = sum > 0xFF;
+		V[x]    = static_cast<u8>( sum & 0xFF );
 	}
 
 	// 8xy5 - SUB Vx, Vy
 	else if( Match( instr, SUB, 0xF00F ) )
 	{
-		DebugPrint( "8xy5 - SUB Vx, Vy" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
 
-		V[0xF] = static_cast<u8>( V[x] > V[y] );
-		V[x] -= V[y];
+		V[0xF] = V[x] > V[y];
+		V[x]  -= V[y];
 	}
 
 	// 8xy6 - SHR Vx {, Vy}
 	else if( Match( instr, SHR, 0xF00F ) )
 	{
-		DebugPrint( "8xy6 - SHR Vx" );
 		auto x = GetNibble<>( instr, 8 );
+
 		V[0xF] = V[x] & 0x1;
-		V[x] /= 2;
+		V[x]  /= 2;
 	}
 
 	// 8xy7 - SUBN Vx, Vy
 	else if( Match( instr, SUBN, 0xF00F ) )
 	{
-		DebugPrint( "8xy7 - SUBN Vx, Vy" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
 
 		V[0xF] = static_cast<u8>( V[y] > V[x] );
-		V[x] = V[y] - V[x];
+		V[x]   = V[y] - V[x];
 	}
 
 	// 8xyE - SHL Vx {, Vy}
 	else if( Match( instr, SHL, 0xF00F ) )
 	{
-		DebugPrint( "8xyE - SHL Vx" );
 		auto x = GetNibble<>( instr, 8 );
 		V[0xF] = V[x] >> 7;
-		V[x] *= 2;
+		V[x]  *= 2;
 	}
 
 	// 9xy0 - SNE Vx, Vy
 	else if( Match( instr, SNE2, 0xF00F ) )
 	{
-		DebugPrint( "9xy0 - SNE Vx, Vy" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
 
@@ -333,42 +310,39 @@ void CPU::ExecInstruction( u16 instr )
 	// Annn - LD I, addr
 	else if( Match( instr, LDI, 0xF000 ) )
 	{
-		DebugPrint( "Annn - LD I, nnn" );
 		I = instr & 0x0FFF;
 	}
 
 	// Bnnn - JP V0, addr
 	else if( Match( instr, JP2, 0xF000 ) )
 	{
-		DebugPrint( "Bnnn - JP V0, addr" );
 		PC = (instr + V[0]) & 0x0FFF;
 	}
 
 	// Cxkk - RND Vx, byte
 	else if( Match( instr, RND, 0xF000 ) )
 	{
-		DebugPrint( "Cxkk - RND Vx, kk" );
 		auto x  = GetNibble<>( instr, 8 );
 		auto kk = static_cast<u8>( dis( gen ) & instr & 0x00FF );
+
 		V[x] = kk;
 	}
 
 	// Dxyn - DRW Vx, Vy, nibble
 	else if( Match( instr, DRW, 0xF000 ) )
 	{
-		DebugPrint( "Dxyn - DRW Vx, Vy, n" );
 		auto x = GetNibble<>( instr, 8 );
 		auto y = GetNibble<>( instr, 4 );
 		auto n = GetNibble<>( instr, 0 );
 
-		Draw( x, y, n );
+		Draw( V[x], V[y], I, n );
 	}
 
 	// Ex9E - SKP Vx
 	else if( Match( instr, SKP, 0xF0FF ) )
 	{
-		DebugPrint( "Ex9E - SKP Vx" );
 		auto x = GetNibble<>( instr, 8 );
+
 		if( Key == x )
 		{
 			PC += 2;
@@ -378,8 +352,8 @@ void CPU::ExecInstruction( u16 instr )
 	// ExA1 - SKNP Vx
 	else if( Match( instr, SKNP, 0xF0FF ) )
 	{
-		DebugPrint( "ExA1 - SKNP Vx" );
 		auto x = GetNibble<>( instr, 8 );
+
 		if( Key != x )
 		{
 			PC += 2;
@@ -389,32 +363,31 @@ void CPU::ExecInstruction( u16 instr )
 	// Fx07 - LD Vx, DT
 	else if( Match( instr, LDDT, 0xF0FF ) )
 	{
-		DebugPrint( "Fx07 - LD Vx, DT" );
 		auto x = GetNibble<>( instr, 8 );
-		V[x] = Time;
+		V[x]   = Time;
 	}
 
 	// Fx0A - LD Vx, K
 	else if( Match( instr, LDKEY, 0xF0FF ) )
 	{
-		DebugPrint( "Fx0A - LD Vx, K" );
 		auto x = GetNibble<>( instr, 8 );
 
-		// Wait for input, frequently check that we
-		// are not quiting/killing the other thread
+		// Wait for input, and frequently check that
+		// we are not quiting/killing the other thread
 		u8 inpKey;
+
 		while( !(inpKey = Key) && !killTimer )
 		{
-			SDL_PumpEvents();
+			SDL_PumpEvents(); // Refresh SDL events
 			this_thread::sleep_for( chrono::milliseconds( 1 ) );
 		}
+
 		V[x] = inpKey;
 	}
 
 	// Fx15 - LD DT, Vx
 	else if( Match( instr, STDT, 0xF0FF ) )
 	{
-		DebugPrint( "Fx15 - LD DT, Vx" );
 		auto x = GetNibble<>( instr, 8 );
 		Time = V[x];
 	}
@@ -422,7 +395,6 @@ void CPU::ExecInstruction( u16 instr )
 	// Fx18 - LD ST, Vx
 	else if( Match( instr, STST, 0xF0FF ) )
 	{
-		DebugPrint( "Fx18 - LD DT, Vx" );
 		auto x = GetNibble<>( instr, 8 );
 		Tone = V[x];
 	}
@@ -430,7 +402,6 @@ void CPU::ExecInstruction( u16 instr )
 	// Fx1E - ADD I, Vx
 	else if( Match( instr, ADD3, 0xF0FF ) )
 	{
-		DebugPrint( "FX1E - ADD I, Vx" );
 		auto x = GetNibble<>( instr, 8 );
 		I += V[x];
 	}
@@ -438,8 +409,8 @@ void CPU::ExecInstruction( u16 instr )
 	// Fx29 - LD F, Vx
 	else if( Match( instr, LDSP, 0xF0FF ) )
 	{
-		DebugPrint( "Fx29 - LD F, Vx" );
 		auto x = GetNibble<>( instr, 8 );
+
 		// Set I to point to the location
 		// of hex sprite corresponding to x
 		I = hexDigsStart + x * 5;
@@ -448,8 +419,8 @@ void CPU::ExecInstruction( u16 instr )
 	// Fx33 - LD B, Vx
 	else if( Match( instr, STBCD, 0xF0FF ) )
 	{
-		DebugPrint( "Fx33 - LD B, Vx" );
 		auto x = GetNibble<>( instr, 8 );
+
 		if( I+2 > totalRam )
 		{
 			throw string( "RAM overflow!" );
@@ -463,10 +434,9 @@ void CPU::ExecInstruction( u16 instr )
 	// Fx55 - LD [I], Vx
 	else if( Match( instr, PSHRGS, 0xF0FF ) )
 	{
-		DebugPrint( "FX55 - PUSH [I], Vx" );
-		u16 offset = 0;
 		auto x = GetNibble<>( instr, 8 );
 
+		u16 offset = 0;
 		for( u8 i=0; i <= x; i++ )
 		{
 			ram[I+offset++] = V[i];
@@ -476,14 +446,11 @@ void CPU::ExecInstruction( u16 instr )
 	// Fx65 - LD [I], Vx
 	else if( Match( instr, POPRGS, 0xF0FF ) )
 	{
-		DebugPrint( "FX65 - POP [I], Vx" );
-		u16 offset = 0;
 		auto x = GetNibble<>( instr, 8 );
 
-
+		u16 offset = 0;
 		for( u8 i=0; i <= x; i++ )
 		{
-			//cout << "MEMREAD FROM " << hex << static_cast<int>( I+offset ) << endl;
 			V[i] = ram[I+offset];
 			offset++;
 		}
@@ -491,7 +458,6 @@ void CPU::ExecInstruction( u16 instr )
 
 	else
 	{
-		DebugPrint( "Unknown" );
 		cout << "Trying to exec instruction " << hex << static_cast<int>( instr ) << " @ " << PC
 			 << " failed, it's not implemented!" << endl;
 
@@ -504,7 +470,7 @@ void CPU::ExecInstruction( u16 instr )
 }
 
 
-void CPU::PrintInfo() const
+void Chip8::PrintInfo() const
 {
 	cout << endl << "General purpose registers:" << endl;
 
@@ -529,7 +495,7 @@ void CPU::PrintInfo() const
 }
 
 
-void CPU::PrintStack() const
+void Chip8::PrintStack() const
 {
 	cout << endl << "Stack:" << endl;
 
@@ -541,21 +507,21 @@ void CPU::PrintStack() const
 }
 
 
-void _TimerLoop( CPU *cpu );
-void CPU::StartTimerThread()
+void _TimerLoop( Chip8 *Chip8 );
+void Chip8::StartTimerThread()
 {
 	timerThread = thread( _TimerLoop, this );
 }
 
 
-void CPU::StopTimerThread()
+void Chip8::StopTimerThread()
 {
 	killTimer = true;
 	timerThread.join();
 }
 
 
-bool CPU::Match( u16 instr, Chip8Instruction pattern, u16 mask )
+bool Chip8::Match( u16 instr, Chip8Instruction pattern, u16 mask )
 {
 	if( (instr & mask) == (pattern & mask) )
 	{
@@ -566,47 +532,40 @@ bool CPU::Match( u16 instr, Chip8Instruction pattern, u16 mask )
 }
 
 
-void CPU::Draw( u8 x, u8 y, u8 n )
+void Chip8::Draw( u8 x, u8 y, u16 addr, u8 len )
 {
-	u8 posX = V[x];
-	u8 posY = V[y];
-
-	if( I >= totalRam )
+	if( addr >= totalRam )
 	{
 		throw string( "RAM overflow!" );
 	}
 
-	for( u8 i=0; i < n; i++ )
+	for( u8 i=0; i < len; i++ )
 	{
 		u32 spriteLine = ram[I+i];
-		u32 pos = posY*displayWidth + i*displayWidth + posX;
-
-		if( pos > displayWidth * displayHeight )
-		{
-			throw string( "VRAM overflow!" );
-		}
+		u32 rowStart   = displayWidth * ((y + i) % displayHeight);
 
 		for( u8 _x=0; _x < 8; _x++ )
 		{
-			auto on = GetBit( spriteLine, 7-_x );
-			vram[pos + _x] ^= on ? 0xffff : 0x0000;
+			auto on   = GetBit( spriteLine, 7-_x );
+			auto xPos = (x + _x) % displayWidth;
+			vram[rowStart + xPos] ^= on ? 0xffff : 0x0000;
 		}
 	}
 }
 
 
-void _TimerLoop( CPU *cpu )
+void _TimerLoop( Chip8 *Chip8 )
 {
-	while( cpu && !cpu->killTimer )
+	while( Chip8 && !Chip8->killTimer )
 	{
-		if( cpu->Time > 0 )
+		if( Chip8->Time > 0 )
 		{
-			cpu->Time--;
+			Chip8->Time--;
 		}
 
-		if( cpu->Tone > 0 )
+		if( Chip8->Tone > 0 )
 		{
-			cpu->Tone--;
+			Chip8->Tone--;
 		}
 
 		this_thread::sleep_for( chrono::milliseconds( 16 ) );
