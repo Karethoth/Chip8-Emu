@@ -18,6 +18,7 @@ namespace chip8emu
 	const u8  stackSize     = 16;
 	const u16 totalRam      = 0x1000;
 	const u16 programStart  = 0x200;
+	const u16 hexDigsStart  = 0x100;
 
 	const u8  displayWidth  = 64;
 	const u8  displayHeight = 32;
