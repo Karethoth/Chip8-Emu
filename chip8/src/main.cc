@@ -36,15 +36,15 @@ int main( int argc, char **argv )
 
 
 	// Setup the screen
-    SDL_Init( SDL_INIT_VIDEO );
-    auto window = SDL_CreateWindow(
+	SDL_Init( SDL_INIT_VIDEO );
+	auto window = SDL_CreateWindow(
 		"Chip-8 Emulator",
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
 		displayWidth * 8,
 		displayHeight * 8,
 		0
-    );
+	);
 
 
 	// Create the renderer and texture for the actual display
