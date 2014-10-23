@@ -9,15 +9,32 @@ using namespace std;
 using namespace chip8emu;
 
 
+void PrintUsage();
+void UserQuitConfirmation();
 void HandleSdlEventsTask();
 
 
 Chip8 chip8;
 bool shouldStop = false;
+bool ranToError = false;
 
 
 int main( int argc, char **argv )
 {
+	// Argument handling
+	if( argc < 2 )
+	{
+		PrintUsage();
+		UserQuitConfirmation();
+
+		return -1;
+	}
+
+
+	// Path for the file to read
+	string inputFile( argv[1] );
+
+
 	// Setup the screen
     SDL_Init( SDL_INIT_VIDEO );
     auto window = SDL_CreateWindow(
@@ -28,6 +45,7 @@ int main( int argc, char **argv )
 		displayHeight * 8,
 		0
     );
+
 
 	// Create the renderer and texture for the actual display
 	SDL_Renderer *renderer = SDL_CreateRenderer( window, -1, 0 );
@@ -41,8 +59,13 @@ int main( int argc, char **argv )
 
 
 	// Load the program
-	if( !chip8.LoadProgram( "test.ch8" ) )
+	if( chip8.LoadProgram( inputFile ) )
 	{
+		std::cout << "Running '" << inputFile << "'" << endl;
+	}
+	else
+	{
+		ranToError = true;
 		shouldStop = true;
 	}
 
@@ -50,8 +73,10 @@ int main( int argc, char **argv )
 	// timers when appropriate (At 60Hz)
 	chip8.StartTimerThread();
 
+
 	// Launch a thread to handle sdl events
 	thread eventThread( HandleSdlEventsTask );
+
 
 	try
 	{
@@ -81,7 +106,15 @@ int main( int argc, char **argv )
 	catch( string &e )
 	{
 		cout << "Ran to error '" << e << "', exiting.." << endl;
+		ranToError = true;
 	}
+
+	catch( ... )
+	{
+		cout << "Ran to unknown error. Couldn't catch, exiting.." << endl;
+		ranToError = true;
+	}
+
 
 	// Wait for the timer thread to stop
 	chip8.StopTimerThread();
@@ -89,16 +122,36 @@ int main( int argc, char **argv )
 	// Wait for the event handler thread to stop
 	eventThread.join();
 
+
 	// Cleanup SDL resources
 	SDL_DestroyTexture( texture );
 	SDL_DestroyRenderer( renderer );
 	SDL_DestroyWindow( window );
 	SDL_Quit();
 
+
+	// Ask for input only if we have ran into an error.
+	if( ranToError )
+	{
+		UserQuitConfirmation();
+		return -2;
+	}
+
+	return 0;
+}
+
+
+void PrintUsage()
+{
+	cout << "Usage: chip8.exe <file>" << endl;
+}
+
+
+void UserQuitConfirmation()
+{
 	// Wait for user input to quit
 	cout << endl << "Hit enter to quit." << endl;
 	getc( stdin );
-	return 0;
 }
 
 

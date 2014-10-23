@@ -78,7 +78,7 @@ bool Chip8::LoadProgram( const string &path )
 	while( inp.good()  )
 	{
 		// Check that we're still within the memory
-		if( (memOffset < (totalRam - programStart)) )
+		if( (memOffset >= (totalRam - programStart)) )
 		{
 			tooBigFile = true;
 			break;
